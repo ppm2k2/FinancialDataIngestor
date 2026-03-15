@@ -1,10 +1,12 @@
-using Swashbuckle.AspNetCore.SwaggerUI;
+using FinancialDataIngestor.DataLayer.Helpers;
+using FinancialDataIngestor.DataLayer.Services;
+using FinancialDataIngestor.Interfaces.DataAccess;
+using FundAdminRestAPI.DataLayer.Repositories;
 using FundAdminRestAPI.EndPoints;
-using FundAdminRestAPI.Models;
-using FundAdminRestAPI.Interfaces;
-using FundAdminRestAPI.BusinessLogic;
-using System.Reflection;
 using FundAdminRestAPI.Interfaces.BusinessLogic;
+using FundAdminRestAPI.Interfaces.DataAccess;
+using FundAdminRestAPI.Models;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,6 +71,9 @@ builder.Services.AddMemoryCache();
 //builder.Services.AddRazorPages();
 
 builder.Services.AddTransient<IFundAdminBL, FundAdminBL>();
+builder.Services.AddTransient<IFundRepository, FundRepository>();
+builder.Services.AddSingleton<DbConnectionFactory>();
+builder.Services.AddTransient<IAuditService, AuditService>();
 
 var app = builder.Build();
 

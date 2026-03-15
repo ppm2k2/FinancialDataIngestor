@@ -1,15 +1,12 @@
-﻿using FundAdminRestAPI.Models;
-using FundAdminRestAPI.Models.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using FinancialDataIngestor.Models.Type;
+using FundAdminRestAPI.Models;
 
 namespace FundAdminRestAPI.Interfaces.BusinessLogic
 {
     public interface IFundAdminBL
     {
-        public Task<RepetedResponse<FundDTO>> GetFundPL();
+        public Task<RepetedResponse<ClientAccountDTO>> GetFundData();
+
+        public Task<RepetedResponse<object>> InsertFundDataAsync();
     }
 }

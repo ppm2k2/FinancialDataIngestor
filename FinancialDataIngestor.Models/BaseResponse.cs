@@ -16,8 +16,10 @@ namespace FundAdminRestAPI.Models
     {
         public bool IsSuccessful { get; set; }
         public List<string> Message { get; set; }
-
+        public string ErrorMessage { get; set; }
     }
+
+
 
     public class Response<T> where T : new()
     {

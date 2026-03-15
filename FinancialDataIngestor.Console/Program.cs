@@ -1,9 +1,7 @@
-﻿using FundAdminRestAPI.BusinessLogic;
-using FundAdminRestAPI.Models;
-using FundAdminRestAPI.Models.Type;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Net;
+﻿using FundAdminRestAPI.Interfaces.DataAccess;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FundAdmin
 {
@@ -15,8 +13,9 @@ namespace FundAdmin
 
             do
             {
-                FundAdminBL fileAdminBL = new FundAdminBL();
-                _ = fileAdminBL.GetFundPL();
+                FundAdminBL fileAdminBL = new FundAdminBL((IFundRepository)null);
+
+                _ = await fileAdminBL.GetFundData();
             } while (await timer.WaitForNextTickAsync());
         }
     }

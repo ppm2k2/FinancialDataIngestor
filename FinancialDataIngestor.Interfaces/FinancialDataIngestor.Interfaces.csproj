@@ -11,8 +11,4 @@
     <ProjectReference Include="..\FinancialDataIngestor.Models\FinancialDataIngestor.Models.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="BusinessLogic\Helpers\" />
-  </ItemGroup>
-
 </Project>

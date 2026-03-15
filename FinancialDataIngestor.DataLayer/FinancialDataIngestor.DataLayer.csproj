@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="DBScript\Query.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.72" />
+    <PackageReference Include="MySql.Data" Version="9.6.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.4.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.4.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -16,6 +22,12 @@
     <ProjectReference Include="..\FinancialDataIngestor.Common\FinancialDataIngestor.Common.csproj" />
     <ProjectReference Include="..\FinancialDataIngestor.Interfaces\FinancialDataIngestor.Interfaces.csproj" />
     <ProjectReference Include="..\FinancialDataIngestor.Models\FinancialDataIngestor.Models.csproj" />
+    <None Remove="..\FinancialDataIngestor.DataLayer\DBScript\MyDatabaseScript.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="DBConnection\" />
+    <Folder Include="DBScript\" />
   </ItemGroup>
 
 </Project>

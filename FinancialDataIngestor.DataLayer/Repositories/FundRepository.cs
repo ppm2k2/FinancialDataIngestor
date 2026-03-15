@@ -1,102 +1,211 @@
-﻿using FundAdminRestAPI.Interfaces.DataAccess;
-using FundAdminRestAPI.Models;
-using FundAdminRestAPI.Models.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using FundAdminRestAPI.Common.Extentions;
-using FundAdminRestAPI.Interfaces.BusinessLogic;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using FundAdminRestAPI.DataLayer.Services;
+﻿    using Dapper;
+    using FinancialDataIngestor.DataLayer.Helpers;
+    using FinancialDataIngestor.Models.Type;
+    using FundAdminRestAPI.Interfaces.DataAccess;
+    using FundAdminRestAPI.Models;
+    using MySql.Data.MySqlClient;
+    using System.Data;
+    using System.Text.Json;
 
-namespace FundAdminRestAPI.DataLayer.Repositories
-{
-    public class FundRepository : IFundRepository
+    namespace FundAdminRestAPI.DataLayer.Repositories
     {
-        public FundRepository() { }
-
-        /// <summary>
-        /// Following Method determines PL of Crypto Funds based on latest security prices 
-        /// </summary>
-        /// <returns></returns>
-        public List<FundDTO> GetFundPL()
+        public class FundRepository : IFundRepository, IDisposable
         {
-            decimal pl = 0;
-            decimal initialMV = 0;
-            decimal currentMV = 0;
-            List<FundDTO> Portfolios = new();
-            var result = new RepetedResponse<FundListDTO>();
-            List<FundListDTO> fundListResponse = new List<FundListDTO>();
+            private readonly DbConnectionFactory _dbFactory;
+            private IDbConnection? _connection;
+            private readonly object _connLock = new();
 
-            // Get Current Rate from Conbase API.
-            PricingDTO currencyRates = FundAdminService.GetRates<PricingDTO>(Constants.JSONRATESURL);
-            RatesDTO currencyRatesDTO = currencyRates.data;
-            Dictionary<string, decimal> rates = currencyRatesDTO.Rates;
-            
-            // Get JSON Data from portfolio.json and calculate fund's initial market value and
-            // P/L with respect to latest currency rates.
-            StreamReader reader = new(Constants.JSONDATA);
-            var json = reader.ReadToEnd();
-            var jarray = JArray.Parse(json);
-            
-            Console.WriteLine(string.Format("********************Crypto Portfolio : {0} *****************", DateTime.Now.ToString("h:mm:ss tt")));
-            foreach (var item in jarray)
+            public FundRepository(DbConnectionFactory dbFactory)
             {
-                FundDTO portfolio = item.ToObject<FundDTO>();
-                foreach (var secirity in portfolio.Securities)
-                {
-                    // Beginning of Portfolio Market Value..
-                    initialMV += secirity.Quantity * secirity.AvgPrice;
+                _dbFactory = dbFactory;
+            }
 
-                    switch (secirity.Name)
+            // Kept for compatibility (if used by tests/mocks). _dbFactory must be set before use.
+            public FundRepository() { }
+
+            // Ensure a synchronous open connection (create once per repository instance)
+            private IDbConnection GetOpenConnection()
+            {
+                if (_connection != null && _connection.State == ConnectionState.Open)
+                    return _connection;
+
+                lock (_connLock)
+                {
+                    if (_connection != null && _connection.State == ConnectionState.Open)
+                        return _connection;
+
+                    _connection = _dbFactory.CreateConnection();
+                    if (_connection.State != ConnectionState.Open)
                     {
-                        // (Quantity * (CurrentPrice - AvgPrice))
-                        case "BTC":
-                            currentMV += secirity.Quantity * (1 / rates[Constants.BTC_TICKER]); // Current BTC MV
-                            pl += secirity.Quantity * (1 / rates[Constants.BTC_TICKER] - secirity.AvgPrice); // Current BTC PL
-                            break;
-                        case "ETH":
-                            currentMV += secirity.Quantity * (1 / rates[Constants.ETH_TICKER]); // Current ETH MV
-                            pl += secirity.Quantity * (1 / rates[Constants.ETH_TICKER] - secirity.AvgPrice);
-                            break;
-                        case "AAVE":
-                            currentMV += secirity.Quantity * (1 / rates[Constants.AAVE_TICKER]); // Current AAVE MV
-                            pl += secirity.Quantity * (1 / rates[Constants.AAVE_TICKER] - secirity.AvgPrice);
-                            break;
-                        case "SOL":
-                            currentMV += secirity.Quantity * (1 / rates[Constants.SOL_TICKER]); // Current SOL MV
-                            pl += secirity.Quantity * (1 / rates[Constants.SOL_TICKER] - secirity.AvgPrice);
-                            break;
+                        ((MySqlConnection)_connection).Open();
+                    }
+                    return _connection;
+                }
+            }
+
+            // Ensure an asynchronous open connection (create once per repository instance)
+            private async Task<IDbConnection> GetOpenConnectionAsync()
+            {
+                if (_connection != null && _connection.State == ConnectionState.Open)
+                    return _connection;
+
+                // Double-check locking pattern for async (simple approach)
+                lock (_connLock)
+                {
+                    if (_connection != null && _connection.State == ConnectionState.Open)
+                        return _connection;
+                    // create connection instance synchronously here; opening will be async below
+                    _connection = _dbFactory.CreateConnection();
+                }
+
+                if (_connection!.State != ConnectionState.Open)
+                {
+                    await ((MySqlConnection)_connection).OpenAsync();
+                }
+
+                return _connection;
+            }
+
+            /// <summary>
+            /// Following Method determines PL of Crypto Funds based on latest security prices 
+            /// </summary>
+            /// <returns></returns>
+            public ClientAccountDTO? GetFundData()
+            {
+                var connection = GetOpenConnection();
+
+                // Aggregate clients -> accounts -> holdings
+                var clientLookup = new Dictionary<string, ClientAccountDTO>(StringComparer.OrdinalIgnoreCase);
+
+                // Multi-map to ClientAccountDTO, Account, Holding
+                var mapped = connection.Query<ClientAccountDTO, AccountDTO, HoldingDTO, ClientAccountDTO>(
+                    SqlQueries.SelecFundAdmin,
+                    (client, account, holding) =>
+                    {
+                        // Normalize client id to string key (works for string/Guid/int via ToString)
+                        var clientKey = client.ClientId?.ToString() ?? string.Empty;
+
+                        if (!clientLookup.TryGetValue(clientKey, out var existingClient))
+                        {
+                            existingClient = client;
+                            // Ensure Accounts list is initialized
+                            if (existingClient.Accounts == null)
+                            {
+                                existingClient.Accounts = new List<AccountDTO>();
+                            }
+                            clientLookup.Add(clientKey, existingClient);
+                        }
+
+                        if (account != null && (account.AccountId != null && !string.IsNullOrEmpty(account.AccountId.ToString())))
+                        {
+                            // Find or add account
+                            var existingAccount = existingClient.Accounts.FirstOrDefault(a => a.AccountId?.ToString() == account.AccountId?.ToString());
+                            if (existingAccount == null)
+                            {
+                                if (account.Holdings == null)
+                                {
+                                    account.Holdings = new List<HoldingDTO>();
+                                }
+                                existingClient.Accounts.Add(account);
+                                existingAccount = account;
+                            }
+
+                            // Add holding if present (check a key property like Ticker to avoid adding empty rows)
+                            if (holding != null && !string.IsNullOrEmpty((holding.Ticker ?? string.Empty)))
+                            {
+                                if (existingAccount.Holdings == null)
+                                {
+                                    existingAccount.Holdings = new List<HoldingDTO>();
+                                }
+                                existingAccount.Holdings.Add(holding);
+                            }
+                        }
+
+                        return existingClient;
+                    },
+                    splitOn: "AccountId,Ticker"
+                ).ToList();
+
+                // Return the first aggregated client (or null)
+                return clientLookup.Values.FirstOrDefault();
+            }
+
+            public async Task<bool> InsertFundDataAsync(ClientAccountDTO client)
+            {
+                var connection = await GetOpenConnectionAsync();
+
+                // 3. Start the transaction (MySqlConnection for async BeginTransactionAsync)
+                var mySqlConn = (MySqlConnection)connection;
+                using var transaction = await mySqlConn.BeginTransactionAsync();
+
+                try
+                {
+                    // Execute Dapper queries using the established connection and transaction
+                    await connection.ExecuteAsync(SqlQueries.InsertClient, client, transaction);
+
+                    foreach (var acc in client.Accounts)
+                    {
+                        await connection.ExecuteAsync(SqlQueries.InsertAccount, new
+                        {
+                            acc.AccountId,
+                            client.ClientId,
+                            acc.AccountType,
+                            acc.Custodian,
+                            acc.OpenedDate,
+                            acc.Status,
+                            acc.CashBalance,
+                            acc.TotalValue
+                        }, transaction);
+
+                        foreach (var h in acc.Holdings)
+                        {
+                            // Ensure the holding insert participates in the same transaction
+                            await connection.ExecuteAsync(SqlQueries.InsertHolding, new
+                            {
+                                acc.AccountId,
+                                h.Ticker,
+                                h.Cusip,
+                                h.Description,
+                                h.Quantity,
+                                h.MarketValue,
+                                h.CostBasis,
+                                h.Price,
+                                h.AssetClass
+                            }, transaction);
+                        }
+                    }
+
+                    await transaction.CommitAsync();
+                    return true;
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+
+            public void Dispose()
+            {
+                if (_connection != null)
+                {
+                    try
+                    {
+                        if (_connection.State != ConnectionState.Closed)
+                        {
+                            _connection.Close();
+                        }
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
+                    finally
+                    {
+                        _connection.Dispose();
+                        _connection = null;
                     }
                 }
-                
-                // Beginning Portfolio MV
-                portfolio.InitialMV = initialMV;
-                portfolio.CurrentMV = currentMV;
-                portfolio.PL = pl;
-                portfolio.PLPercent = (currentMV - initialMV) / initialMV * 100;
-
-                LogFundData(portfolio);
-
-                Portfolios.Add(portfolio);
             }
-            return Portfolios;
-        }
-
-        /// <summary>
-        /// Logs Fund Data in Console
-        /// </summary>
-        /// <param name="portfolio"></param>
-        private static void LogFundData(FundDTO portfolio)
-        {
-            
-            Console.WriteLine(string.Format(" {0} Initial Market Value : ${1}, Current Market Value : ${2}, P/L : ${3}, P/L %: {4}%",
-                portfolio.Name, Math.Round(portfolio.InitialMV, 8), Math.Round(portfolio.CurrentMV, 8), Math.Round(portfolio.PL, 8), Math.Round(portfolio.PLPercent, 8)));
-
         }
     }
-}
