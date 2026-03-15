@@ -44,4 +44,25 @@ CREATE TABLE Holdings (
     FOREIGN KEY (account_id) REFERENCES Accounts(account_id) ON DELETE CASCADE,
     INDEX idx_account_id (account_id),
     INDEX idx_ticker (ticker)
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; */
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; 
+
+-- 4. AuditLog Table 
+
+CREATE TABLE AuditLog (
+    audit_id INT AUTO_INCREMENT PRIMARY KEY,
+    entity_name VARCHAR(50),      -- e.g., 'Client', 'Account'
+    entity_id VARCHAR(50),        -- The ID of the record changed
+    action_type VARCHAR(10),      -- 'INSERT', 'UPDATE', 'DELETE'
+    changed_by VARCHAR(50),       -- Username or System ID
+    change_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    old_values JSON,              -- Store the previous state
+    new_values JSON               -- Store the new state
+);
+
+-- Indexing for performance when searching history
+CREATE INDEX idx_audit_entity ON AuditLog(entity_name, entity_id);
+
+
+
+
+*/
