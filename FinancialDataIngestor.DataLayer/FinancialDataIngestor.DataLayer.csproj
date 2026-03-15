@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="DBScript\Query.sql" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.72" />
     <PackageReference Include="MySql.Data" Version="9.6.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.4.0" />
@@ -27,7 +23,6 @@
 
   <ItemGroup>
     <Folder Include="DBConnection\" />
-    <Folder Include="DBScript\" />
   </ItemGroup>
 
 </Project>
