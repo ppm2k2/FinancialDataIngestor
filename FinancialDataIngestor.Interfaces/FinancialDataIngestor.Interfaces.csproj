@@ -1,14 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FundAdminRestAPI.Common\FundAdminRestAPI.Common.csproj" />
-    <ProjectReference Include="..\FundAdminRestAPI.Models\FundAdminRestAPI.Models.csproj" />
+    <ProjectReference Include="..\FinancialDataIngestor.Common\FinancialDataIngestor.Common.csproj" />
+    <ProjectReference Include="..\FinancialDataIngestor.Models\FinancialDataIngestor.Models.csproj" />
   </ItemGroup>
 
   <ItemGroup>

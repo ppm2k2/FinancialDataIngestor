@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+	</ItemGroup>
+	<ItemGroup>
+		
+		<ProjectReference Include="..\FinancialDataIngestor.BusinessLogic\FinancialDataIngestor.BusinessLogic.csproj" />
+		<ProjectReference Include="..\FinancialDataIngestor.Common\FinancialDataIngestor.Common.csproj" />
+		<ProjectReference Include="..\FinancialDataIngestor.Interfaces\FinancialDataIngestor.Interfaces.csproj" />
+		<ProjectReference Include="..\FinancialDataIngestor.Models\FinancialDataIngestor.Models.csproj" />
+	</ItemGroup>
+		
+</Project>
+

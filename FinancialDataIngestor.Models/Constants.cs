@@ -13,9 +13,8 @@ namespace FundAdminRestAPI.Models
         public const string SWAGGER = "Sswagger";
         public const string INDEX = "index.html";
         public const string CONFIGURATION = "UiConfiguration";
-        public const string JSONDATA = @"C:\Source\GIT\Repos\FundAdminRestAPI\FundAdminRestAPI.Console\Data\Portfolio.json";
+        public const string JSONDATA = @"C:\Users\ppm2k\source\repos\FinancialDataIngestor\FinancialDataIngestor.Console\Data\Portfolio.json";
         public const string JSONRATESURL = "https://api.coinbase.com/v2/exchange-rates?currency=USD";
-
         public const string BTC_TICKER = "BTC";
         public const string ETH_TICKER = "ETH";
         public const string AAVE_TICKER = "AAVE";

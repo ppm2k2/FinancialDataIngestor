@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.5.33424.131
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11520.95 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deploy", "deploy", "{441DD4CB-9686-4837-8633-4DD957019E1A}"
 EndProject
@@ -9,21 +9,21 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D15CDB08-C68
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{5C2217FF-EB32-43C9-8A6C-69877E1989B3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FundAdminRestAPI", "FundAdminRestAPI\FundAdminRestAPI.csproj", "{4A677EE0-5176-4E7C-9D1B-AD562AE92BF7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancialDataIngestor.RestAPI", "FinancialDataIngestor.RestAPI\FinancialDataIngestor.RestAPI.csproj", "{4A677EE0-5176-4E7C-9D1B-AD562AE92BF7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FundAdminRestAPI.BusinessLogic", "FundAdminRestAPI.BusinessLogic\FundAdminRestAPI.BusinessLogic.csproj", "{BB48023D-188C-4CFF-86BE-8FF0341E8E8D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancialDataIngestor.BusinessLogic", "FinancialDataIngestor.BusinessLogic\FinancialDataIngestor.BusinessLogic.csproj", "{BB48023D-188C-4CFF-86BE-8FF0341E8E8D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FundAdminRestAPI.Common", "FundAdminRestAPI.Common\FundAdminRestAPI.Common.csproj", "{B771CF17-79EE-41E9-82D9-B9EC95887B48}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancialDataIngestor.Common", "FinancialDataIngestor.Common\FinancialDataIngestor.Common.csproj", "{B771CF17-79EE-41E9-82D9-B9EC95887B48}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FundAdminRestAPI.DataLayer", "FundAdminRestAPI.DataLayer\FundAdminRestAPI.DataLayer.csproj", "{397C11AB-64BF-43D8-84AA-26F2773C3216}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancialDataIngestor.DataLayer", "FinancialDataIngestor.DataLayer\FinancialDataIngestor.DataLayer.csproj", "{397C11AB-64BF-43D8-84AA-26F2773C3216}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FundAdminRestAPI.Interfaces", "FundAdminRestAPI.Interfaces\FundAdminRestAPI.Interfaces.csproj", "{B1917C5A-9F31-4B24-9CA8-AA44C525F45D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancialDataIngestor.Interfaces", "FinancialDataIngestor.Interfaces\FinancialDataIngestor.Interfaces.csproj", "{B1917C5A-9F31-4B24-9CA8-AA44C525F45D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FundAdminRestAPI.Models", "FundAdminRestAPI.Models\FundAdminRestAPI.Models.csproj", "{12E6BF34-F7CA-4233-936F-C4DF9F1F829C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancialDataIngestor.Models", "FinancialDataIngestor.Models\FinancialDataIngestor.Models.csproj", "{12E6BF34-F7CA-4233-936F-C4DF9F1F829C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FundAdminRestAPI.UnitTests", "FundAdminRestAPI.UnitTests\FundAdminRestAPI.UnitTests.csproj", "{0E0884B8-F14C-4C7E-B135-50A090321488}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancialDataIngestor.UnitTests", "FinancialDataIngestor.UnitTests\FinancialDataIngestor.UnitTests.csproj", "{0E0884B8-F14C-4C7E-B135-50A090321488}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FundAdminRestAPI.Console", "FundAdminRestAPI.Console\FundAdminRestAPI.Console.csproj", "{61CDB2CC-C8D6-48EC-A149-BBD25D034C20}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancialDataIngestor.Console", "FinancialDataIngestor.Console\FinancialDataIngestor.Console.csproj", "{61CDB2CC-C8D6-48EC-A149-BBD25D034C20}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
