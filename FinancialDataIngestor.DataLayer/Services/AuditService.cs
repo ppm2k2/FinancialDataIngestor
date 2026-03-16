@@ -24,5 +24,6 @@ namespace FinancialDataIngestor.DataLayer.Services
                 newValues = JsonSerializer.Serialize(newValues)
             });
         }
+
     }
 }

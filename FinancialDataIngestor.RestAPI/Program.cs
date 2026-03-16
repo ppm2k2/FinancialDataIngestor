@@ -78,10 +78,9 @@ builder.Services.AddTransient<IAuditService, AuditService>();
 var app = builder.Build();
 
 
-
-if (!String.IsNullOrWhiteSpace(Constants.API_PATH_BASE))
+if (!String.IsNullOrWhiteSpace(Constants.ApiPathBase))
 {
-    app.UsePathBase($"/{Constants.API_PATH_BASE.TrimStart('/')}");
+    app.UsePathBase($"/{Constants.ApiPathBase.TrimStart('/')}");
 }
 
 if(app.Environment.IsDevelopment())
