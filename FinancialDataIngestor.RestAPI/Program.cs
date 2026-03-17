@@ -1,4 +1,4 @@
-using FinancialDataIngestor.DataLayer.Helpers;
+using FinancialDataIngestor.DataLayer.DBConnection;
 using FinancialDataIngestor.DataLayer.Services;
 using FinancialDataIngestor.Interfaces.DataAccess;
 using FundAdminRestAPI.DataLayer.Repositories;
@@ -72,8 +72,9 @@ builder.Services.AddMemoryCache();
 
 builder.Services.AddTransient<IFundAdminBL, FundAdminBL>();
 builder.Services.AddTransient<IFundRepository, FundRepository>();
-builder.Services.AddSingleton<DbConnectionFactory>();
 builder.Services.AddTransient<IAuditService, AuditService>();
+
+builder.Services.AddSingleton<DbConnectionFactory>();
 
 var app = builder.Build();
 

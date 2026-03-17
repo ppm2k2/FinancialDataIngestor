@@ -1,10 +1,11 @@
 ﻿using Dapper;
-using FinancialDataIngestor.DataLayer.Helpers;
 using FinancialDataIngestor.Models.Type;
 using FundAdminRestAPI.Interfaces.DataAccess;
 using System.Data;
 using System.Collections.Generic;
 using System.Linq;
+using FinancialDataIngestor.DataLayer.Constants;
+using FinancialDataIngestor.DataLayer.DBConnection;
 
 namespace FundAdminRestAPI.DataLayer.Repositories
 {

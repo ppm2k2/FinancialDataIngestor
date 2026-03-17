@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace FinancialDataIngestor.DataLayer.Helpers
+namespace FinancialDataIngestor.DataLayer.Constants
 {
     public static class SqlQueries
     {

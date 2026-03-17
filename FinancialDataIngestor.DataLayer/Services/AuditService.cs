@@ -1,5 +1,6 @@
 ﻿using Dapper;
-using FinancialDataIngestor.DataLayer.Helpers;
+using FinancialDataIngestor.DataLayer.Constants;
+using FinancialDataIngestor.DataLayer.DBConnection;
 using FinancialDataIngestor.Interfaces.DataAccess;
 using System.Text.Json;
 
