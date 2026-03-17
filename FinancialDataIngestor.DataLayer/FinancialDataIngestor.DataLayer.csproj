@@ -21,8 +21,4 @@
     <None Remove="..\FinancialDataIngestor.DataLayer\DBScript\MyDatabaseScript.sql" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="DBConnection\" />
-  </ItemGroup>
-
 </Project>

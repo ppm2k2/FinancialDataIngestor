@@ -118,7 +118,7 @@ public class FundAdminBL : IFundAdminBL
         finally
         {
             await _auditService.LogChangeAsync(
-                entityName: "PositionInsertion",
+                entityName: "INSERT",
                 entityId: client?.ClientId ?? string.Empty,
                 action: "INSERT",
                 oldValues: null,
@@ -207,7 +207,7 @@ public class FundAdminBL : IFundAdminBL
             string accountId = $"{parts[3]}_{parts[4]}";
 
             await _auditService.LogChangeAsync(
-                entityName: "PositionExtraction",
+                entityName: "EXTRACT",
                 entityId: clientId,
                 action: "EXTRACT",
                 oldValues: null,

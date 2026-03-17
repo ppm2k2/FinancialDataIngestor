@@ -1,211 +1,115 @@
-﻿    using Dapper;
-    using FinancialDataIngestor.DataLayer.Helpers;
-    using FinancialDataIngestor.Models.Type;
-    using FundAdminRestAPI.Interfaces.DataAccess;
-    using FundAdminRestAPI.Models;
-    using MySql.Data.MySqlClient;
-    using System.Data;
-    using System.Text.Json;
+﻿using Dapper;
+using FinancialDataIngestor.DataLayer.Helpers;
+using FinancialDataIngestor.Models.Type;
+using FundAdminRestAPI.Interfaces.DataAccess;
+using System.Data;
+using System.Collections.Generic;
+using System.Linq;
 
-    namespace FundAdminRestAPI.DataLayer.Repositories
+namespace FundAdminRestAPI.DataLayer.Repositories
+{
+    public class FundRepository : IFundRepository
     {
-        public class FundRepository : IFundRepository, IDisposable
+        private readonly DbConnectionFactory _dbFactory;
+
+        public FundRepository(DbConnectionFactory dbFactory)
         {
-            private readonly DbConnectionFactory _dbFactory;
-            private IDbConnection? _connection;
-            private readonly object _connLock = new();
+            _dbFactory = dbFactory;
+        }
 
-            public FundRepository(DbConnectionFactory dbFactory)
-            {
-                _dbFactory = dbFactory;
-            }
+        public ClientAccountDTO GetFundData()
+        {
+            // Dictionary is local to the method, making it thread-safe
+            var clientLookup = new Dictionary<string, ClientAccountDTO>(StringComparer.OrdinalIgnoreCase);
 
-            // Kept for compatibility (if used by tests/mocks). _dbFactory must be set before use.
-            public FundRepository() { }
+            using var connection = _dbFactory.CreateConnection();
+            connection.Open();
 
-            // Ensure a synchronous open connection (create once per repository instance)
-            private IDbConnection GetOpenConnection()
-            {
-                if (_connection != null && _connection.State == ConnectionState.Open)
-                    return _connection;
-
-                lock (_connLock)
+            connection.Query<ClientAccountDTO, AccountDTO, HoldingDTO, ClientAccountDTO>(
+                SqlQueries.SelecFundAdmin,
+                (client, account, holding) =>
                 {
-                    if (_connection != null && _connection.State == ConnectionState.Open)
-                        return _connection;
-
-                    _connection = _dbFactory.CreateConnection();
-                    if (_connection.State != ConnectionState.Open)
+                    if (!clientLookup.TryGetValue(client.ClientId, out var existingClient))
                     {
-                        ((MySqlConnection)_connection).Open();
+                        existingClient = client;
+                        existingClient.Accounts = new List<AccountDTO>();
+                        clientLookup.Add(existingClient.ClientId, existingClient);
                     }
-                    return _connection;
-                }
-            }
 
-            // Ensure an asynchronous open connection (create once per repository instance)
-            private async Task<IDbConnection> GetOpenConnectionAsync()
-            {
-                if (_connection != null && _connection.State == ConnectionState.Open)
-                    return _connection;
-
-                // Double-check locking pattern for async (simple approach)
-                lock (_connLock)
-                {
-                    if (_connection != null && _connection.State == ConnectionState.Open)
-                        return _connection;
-                    // create connection instance synchronously here; opening will be async below
-                    _connection = _dbFactory.CreateConnection();
-                }
-
-                if (_connection!.State != ConnectionState.Open)
-                {
-                    await ((MySqlConnection)_connection).OpenAsync();
-                }
-
-                return _connection;
-            }
-
-            /// <summary>
-            /// Following Method determines PL of Crypto Funds based on latest security prices 
-            /// </summary>
-            /// <returns></returns>
-            public ClientAccountDTO? GetFundData()
-            {
-                var connection = GetOpenConnection();
-
-                // Aggregate clients -> accounts -> holdings
-                var clientLookup = new Dictionary<string, ClientAccountDTO>(StringComparer.OrdinalIgnoreCase);
-
-                // Multi-map to ClientAccountDTO, Account, Holding
-                var mapped = connection.Query<ClientAccountDTO, AccountDTO, HoldingDTO, ClientAccountDTO>(
-                    SqlQueries.SelecFundAdmin,
-                    (client, account, holding) =>
+                    if (account != null && !string.IsNullOrEmpty(account.AccountId))
                     {
-                        // Normalize client id to string key (works for string/Guid/int via ToString)
-                        var clientKey = client.ClientId?.ToString() ?? string.Empty;
-
-                        if (!clientLookup.TryGetValue(clientKey, out var existingClient))
+                        var existingAccount = existingClient.Accounts.Find(a => a.AccountId == account.AccountId);
+                        if (existingAccount == null)
                         {
-                            existingClient = client;
-                            // Ensure Accounts list is initialized
-                            if (existingClient.Accounts == null)
-                            {
-                                existingClient.Accounts = new List<AccountDTO>();
-                            }
-                            clientLookup.Add(clientKey, existingClient);
+                            existingAccount = account;
+                            existingAccount.Holdings = new List<HoldingDTO>();
+                            existingClient.Accounts.Add(existingAccount);
                         }
 
-                        if (account != null && (account.AccountId != null && !string.IsNullOrEmpty(account.AccountId.ToString())))
+                        if (holding != null && !string.IsNullOrEmpty(holding.Ticker))
                         {
-                            // Find or add account
-                            var existingAccount = existingClient.Accounts.FirstOrDefault(a => a.AccountId?.ToString() == account.AccountId?.ToString());
-                            if (existingAccount == null)
-                            {
-                                if (account.Holdings == null)
-                                {
-                                    account.Holdings = new List<HoldingDTO>();
-                                }
-                                existingClient.Accounts.Add(account);
-                                existingAccount = account;
-                            }
-
-                            // Add holding if present (check a key property like Ticker to avoid adding empty rows)
-                            if (holding != null && !string.IsNullOrEmpty((holding.Ticker ?? string.Empty)))
-                            {
-                                if (existingAccount.Holdings == null)
-                                {
-                                    existingAccount.Holdings = new List<HoldingDTO>();
-                                }
-                                existingAccount.Holdings.Add(holding);
-                            }
+                            existingAccount.Holdings.Add(holding);
                         }
+                    }
+                    return existingClient;
+                },
+                splitOn: "AccountId,Ticker"
+            );
 
-                        return existingClient;
-                    },
-                    splitOn: "AccountId,Ticker"
-                ).ToList();
+            // Use First() to satisfy the non-nullable return type required by IFundRepository.
+            // This will throw InvalidOperationException if there are no clients.
+            return clientLookup.Values.First();
+        }
 
-                // Return the first aggregated client (or null)
-                return clientLookup.Values.FirstOrDefault();
-            }
+        public async Task<bool> InsertFundDataAsync(ClientAccountDTO client)
+        {
+            using var connection = _dbFactory.CreateConnection();
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
 
-            public async Task<bool> InsertFundDataAsync(ClientAccountDTO client)
+            try
             {
-                var connection = await GetOpenConnectionAsync();
+                await connection.ExecuteAsync(SqlQueries.InsertClient, client, transaction);
 
-                // 3. Start the transaction (MySqlConnection for async BeginTransactionAsync)
-                var mySqlConn = (MySqlConnection)connection;
-                using var transaction = await mySqlConn.BeginTransactionAsync();
-
-                try
+                foreach (var acc in client.Accounts)
                 {
-                    // Execute Dapper queries using the established connection and transaction
-                    await connection.ExecuteAsync(SqlQueries.InsertClient, client, transaction);
-
-                    foreach (var acc in client.Accounts)
+                    await connection.ExecuteAsync(SqlQueries.InsertAccount, new
                     {
-                        await connection.ExecuteAsync(SqlQueries.InsertAccount, new
+                        acc.AccountId,
+                        client.ClientId,
+                        acc.AccountType,
+                        acc.Custodian,
+                        acc.OpenedDate,
+                        acc.Status,
+                        acc.CashBalance,
+                        acc.TotalValue
+                    }, transaction);
+
+                    foreach (var h in acc.Holdings)
+                    {
+                        await connection.ExecuteAsync(SqlQueries.InsertHolding, new
                         {
                             acc.AccountId,
-                            client.ClientId,
-                            acc.AccountType,
-                            acc.Custodian,
-                            acc.OpenedDate,
-                            acc.Status,
-                            acc.CashBalance,
-                            acc.TotalValue
+                            h.Ticker,
+                            h.Cusip,
+                            h.Description,
+                            h.Quantity,
+                            h.MarketValue,
+                            h.CostBasis,
+                            h.Price,
+                            h.AssetClass
                         }, transaction);
-
-                        foreach (var h in acc.Holdings)
-                        {
-                            // Ensure the holding insert participates in the same transaction
-                            await connection.ExecuteAsync(SqlQueries.InsertHolding, new
-                            {
-                                acc.AccountId,
-                                h.Ticker,
-                                h.Cusip,
-                                h.Description,
-                                h.Quantity,
-                                h.MarketValue,
-                                h.CostBasis,
-                                h.Price,
-                                h.AssetClass
-                            }, transaction);
-                        }
                     }
+                }
 
-                    await transaction.CommitAsync();
-                    return true;
-                }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+                transaction.Commit();
+                return true;
             }
-
-            public void Dispose()
+            catch
             {
-                if (_connection != null)
-                {
-                    try
-                    {
-                        if (_connection.State != ConnectionState.Closed)
-                        {
-                            _connection.Close();
-                        }
-                    }
-                    catch
-                    {
-                        // ignore
-                    }
-                    finally
-                    {
-                        _connection.Dispose();
-                        _connection = null;
-                    }
-                }
+                transaction.Rollback();
+                throw;
             }
         }
     }
+}
