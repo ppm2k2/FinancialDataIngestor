@@ -9,17 +9,26 @@ namespace FundAdminRestAPI.EndPoints
         public static void MapFundServiceEndpoints(this WebApplication app)
         {
             // POST: Ingest new data (Trigger Database Save)
-            app.MapPost("/FundService/CreateFundData", async ([FromServices] IFundAdminBL fundBL) =>
+            app.MapPost("/FundService/IngestFundData", async (
+            [FromQuery] string zipUrl, // Swagger shows a 'zipUrl' text box
+            [FromServices] IFundAdminBL fundBL) =>
             {
+                if (string.IsNullOrEmpty(zipUrl))
+                {
+                    return Results.BadRequest("A valid ZIP URL is required.");
+                }
+
                 try
                 {
-                    // Assuming ProcessAndSaveData returns a boolean or status object
-                    await fundBL.InsertFundDataAsync();
-                    return Results.Accepted("/FundService/CreateFundData", "Ingestion process completed successfully.");
+                    // We pass the URL from the webhook to the BL
+                    var result = await fundBL.InsertFundDataAsync(zipUrl);
+
+                    return result.ServiceReponse.IsSuccessful
+                        ? Results.Accepted($"/FundService/Status", result)
+                        : Results.BadRequest(result);
                 }
                 catch (Exception ex)
                 {
-                    // Return a 500 error if something goes wrong in the Data/BL layer
                     return Results.Problem(detail: ex.Message, title: "Ingestion Failed", statusCode: 500);
                 }
             });
@@ -32,6 +41,20 @@ namespace FundAdminRestAPI.EndPoints
                   return data != null ? Results.Ok(data) : Results.NotFound("No fund data found.");
               });
 
+            /*app.MapPost("/FundService/CreateFundData", async ([FromServices] IFundAdminBL fundBL) =>
+            {
+                try
+                {
+                    // Assuming ProcessAndSaveData returns a boolean or status object
+                    await fundBL.InsertFundDataAsync();
+                    return Results.Accepted("/FundService/CreateFundData", "Ingestion process completed successfully.");
+                }
+                catch (Exception ex)
+                {
+                    // Return a 500 error if something goes wrong in the Data/BL layer
+                    return Results.Problem(detail: ex.Message, title: "Ingestion Failed", statusCode: 500);
+                }
+            });*/
 
         }
     }

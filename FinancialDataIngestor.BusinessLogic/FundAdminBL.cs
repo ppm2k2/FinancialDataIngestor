@@ -133,7 +133,218 @@ public class FundAdminBL : IFundAdminBL
 
         return result;
     }
+    
+    public async Task<RepetedResponse<object>> InsertFundDataAsync(string zipUrl)
+    {
+        await Download_File();
 
+        var result = new RepetedResponse<object>();
+        result.ServiceReponse = new Response();
+
+        // Variables declared at method scope so finally block can access them
+        ClientAccountDTO client = null;
+        bool isSuccess = false;
+        string errorMessage = null;
+
+        try
+        {
+            // Call the synchronous repository method that exists on IFundRepository.
+            client = ReadFundData();
+
+            // Wrap the single DTO into a list to match RepetedResponse.Result type.
+            if (client == null || string.IsNullOrEmpty(client.ClientId))
+                throw new ArgumentException("Invalid client data provided.");
+
+            isSuccess = await _fundRepository.InsertFundDataAsync(client);
+
+            // Directly store the bool inside an object list.
+            result.Result = new List<object> { isSuccess };
+
+            result.ServiceReponse.IsSuccessful = isSuccess;
+            result.ServiceReponse.Message = new List<string>
+            {
+                isSuccess ? "Data inserted successfully." : "Data insertion failed."
+            };
+        }
+        catch (Exception ex)
+        {
+            isSuccess = false;
+            errorMessage = ex.Message;
+
+            result.ServiceReponse.IsSuccessful = false;
+            result.ServiceReponse.ErrorMessage = ex.Message;
+            result.ServiceReponse.Message = new List<string> { ex.Message };
+        }
+        finally
+        {
+            await _auditService.LogChangeAsync(
+                entityName: "INSERT",
+                entityId: client?.ClientId ?? string.Empty,
+                action: "INSERT",
+                oldValues: null,
+                newValues: new
+                {
+                    Status = isSuccess ? "SUCCESS" : "FAILURE",
+                    Details = errorMessage ?? (isSuccess ? "Data insertion Operation completed successfully" : "Operation failed")
+                }
+            );
+
+        }
+
+        return result;
+    }
+
+    /*public async Task ExecuteFullEtlProcessAsync()
+    {
+        try
+        {
+            // 1. Fetch all URLs from the Database via Repository
+            // Using Dapper internally, this would be: "SELECT Url FROM ClientConfigs"
+            var urls = new List<string>
+            {
+                "https://github.com/ppm2k2/FinancialDataIngestor/raw/main/FinancialDataIngestor.Console/Data/Payload_1.zip",
+                "https://github.com/ppm2k2/FinancialDataIngestor/raw/main/FinancialDataIngestor.Console/Data/Payload_2.zip",
+                // Add more URLs as needed for testing
+            };
+            // Get all the URL or locations from DB or other sources ..
+            //var urls = await _fundRepository.GetAllClientTargetUrlsAsync();
+
+            if (urls == null || !urls.Any())
+            {
+                Console.WriteLine("No client URLs found to process.");
+                return;
+            }
+
+            // 2. Trigger the Parallel Processing logic
+            // This handles the 1,000+ clients using the "Try-Continue" pattern
+            await ProcessAllClientsAsync(urls);
+        }
+        catch (Exception ex)
+        {
+            // Top-level logging if the initial DB fetch or orchestration fails
+            await _auditService.LogChangeAsync(
+                entityName: "ETL_ORCHESTRATOR",
+                entityId: "SYSTEM",
+                action: "EXECUTE_BATCH",
+                newValues: new { Error = "Critical failure in ETL start", Details = ex.Message }
+            );
+        }
+    }
+
+    public async Task ProcessAllClientsAsync(IEnumerable<string> zipUrls)
+    {
+        // Limit concurrency to 10-20 to avoid exhausting MySQL connection pool or Sockets
+        var options = new ParallelOptions { MaxDegreeOfParallelism = 10 };
+
+        await Parallel.ForEachAsync(zipUrls, options, async (url, token) =>
+        {
+            try
+            {
+                // We pass the URL into your existing insertion logic
+                await InsertFundDataAsync(url);
+            }
+            catch (Exception ex)
+            {
+                // Individual client failure - Log and continue to next
+                await _auditService.LogChangeAsync(
+                    entityName: "CLIENT_ETL",
+                    entityId: url,
+                    action: "INSERT_FAILURE",
+                    newValues: new { Status = "SKIPPED", Reason = ex.Message }
+                );
+            }
+        });
+    }*/
+
+    private async Task Download_File(string zipUrl)
+    {
+        bool isSuccess = true;
+        string errorMessage = null;
+        var result = new RepetedResponse<object>();
+        result.ServiceReponse = new Response();
+        // Use centralized configuration from AppConstants
+        //string zipUrl = Constants.ZipUrl;
+        string timestamp = DateTime.Now.ToString(Constants.TimestampFormat);
+
+        string baseFolder = Constants.BaseFolder;
+        string zipFileName = string.Format(Constants.ZipFileNameFormat, timestamp);
+        string jsonFileName = string.Format(Constants.JsonFileNameFormat, timestamp);
+
+        string finalZipPath = Path.Combine(baseFolder, zipFileName);
+        string finalJsonPath = Path.Combine(baseFolder, jsonFileName);
+
+        try
+        {
+            if (!Directory.Exists(baseFolder))
+                Directory.CreateDirectory(baseFolder);
+
+            Console.WriteLine($"Downloading ZIP to: {finalZipPath}");
+            byte[] fileBytes = await _httpClient.GetByteArrayAsync(zipUrl);
+            await File.WriteAllBytesAsync(finalZipPath, fileBytes);
+
+            using (ZipArchive archive = ZipFile.OpenRead(finalZipPath))
+            {
+                var entry = archive.Entries.FirstOrDefault(e => !string.IsNullOrEmpty(e.Name));
+
+                if (entry != null)
+                {
+                    entry.ExtractToFile(finalJsonPath, overwrite: true);
+                    Console.WriteLine($"Extracted and renamed to: {finalJsonPath}");
+                    // Directly store the bool inside an object list.
+                    result.Result = new List<object> { isSuccess };
+
+                    result.ServiceReponse.IsSuccessful = isSuccess;
+                    result.ServiceReponse.Message = new List<string>
+                    {
+                        isSuccess ? "Data Extracted successfully." : "Data insertion failed."
+                    };
+                }
+                else
+                {
+                    Console.WriteLine("Error: The ZIP file appears to be empty.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            isSuccess = false;
+            errorMessage = ex.Message;
+
+            result.ServiceReponse.IsSuccessful = false;
+            result.ServiceReponse.ErrorMessage = ex.Message;
+            result.ServiceReponse.Message = new List<string> { ex.Message };
+        }
+        finally
+        {
+            // 1. Remove the extension to avoid including ".zip" in your parsed data
+            string nameWithoutExtension = Path.GetFileNameWithoutExtension(zipFileName);
+
+            // 2. Split the string by the underscore
+            string[] parts = nameWithoutExtension.Split('_');
+
+            // 3. Map the parts to your variables
+            // parts[0] = "CLT", parts[1] = "29481"
+            string clientId = $"{parts[0]}_{parts[1]}";
+            string lastName = parts[2];
+            string accountId = $"{parts[3]}_{parts[4]}";
+
+            await _auditService.LogChangeAsync(
+                entityName: "EXTRACT",
+                entityId: clientId,
+                action: "EXTRACT",
+                oldValues: null,
+                newValues: new
+                {
+                    Status = isSuccess ? "SUCCESS" : "FAILURE",
+                    FileName = zipFileName,
+                    AccountId = accountId,
+                    Details = errorMessage ?? (isSuccess ? "Data download Operation completed successfully" : "Operation failed")
+                }
+            );
+
+
+        }
+    }
     private async Task Download_File()
     {
         bool isSuccess = true;
@@ -223,7 +434,6 @@ public class FundAdminBL : IFundAdminBL
 
         }
     }
-
     public ClientAccountDTO ReadFundData()
     {
         string baseFolder = Constants.BaseFolder;

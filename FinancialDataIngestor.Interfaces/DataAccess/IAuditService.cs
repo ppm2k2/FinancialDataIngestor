@@ -7,5 +7,6 @@ namespace FinancialDataIngestor.Interfaces.DataAccess
     public interface IAuditService
     {
         Task LogChangeAsync(string entityName, string entityId, string action, object oldValues, object newValues);
+        //Task LogChangeAsync(string entityName, string entityId, string action, object newValues);
     }
 }
